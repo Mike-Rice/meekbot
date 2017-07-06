@@ -50,3 +50,5 @@ Network Trash Folder
 Temporary Items
 .apdisk
 settings.py
+__pycache__/settings.cpython-35.pyc
+settings.py
