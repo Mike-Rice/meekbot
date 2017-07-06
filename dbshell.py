@@ -4,13 +4,14 @@ import sys
 import string
 import time
 from contextlib import contextmanager
+from settings import dbpassword
 
 class database():
     def __init__(self):
         #self.streamName = streamName
         
         #Define our connection string
-        self._conn_string = "host='localhost' dbname='meekbot' user='postgres' password='xxx'"
+        self._conn_string = "host='localhost' dbname='meekbot' user='postgres' password='" + dbpassword + "'"
 
         # print the connection string we will use to connect
         print("Connecting to database\n    ->%s" % (self._conn_string))

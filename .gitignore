@@ -1,5 +1,6 @@
 #Log Files
 *.log
+settings.py
 
 # Windows image file caches
 Thumbs.db
