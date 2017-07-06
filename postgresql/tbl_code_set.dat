@@ -1,0 +1,29 @@
+CREATE TABLE meekbot.code_set (
+    active_ind BOOLEAN NOT NULL DEFAULT TRUE,
+    code_set SERIAL NOT NULL PRIMARY KEY,
+    display text COLLATE pg_catalog."default" NOT NULL,
+    display_key text COLLATE pg_catalog."default" NOT NULL,
+    create_dt_tm timestamptz NOT NULL,
+    updt_dt_tm timestamptz NOT NULL DEFAULT now()
+)
+WITH (
+    OIDS = FALSE
+)
+TABLESPACE meekbot;
+
+ALTER TABLE meekbot.code_set
+    OWNER to "Mike";
+COMMENT ON TABLE meekbot.code_set
+    IS 'Code sets used to group like code values';
+
+COMMENT ON COLUMN meekbot.code_set.code_set
+    IS 'code set groups like code values on the code_value table';
+
+-- Index: xie1_code_set
+
+-- DROP INDEX meekbot.xie1_code_set;
+
+CREATE INDEX xie1_code_set
+    ON meekbot.code_set USING btree
+    (code_set)
+    TABLESPACE meekbot;

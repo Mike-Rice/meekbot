@@ -1,0 +1,37 @@
+CREATE TABLE meekbot.person_stream_reltn (
+    active_ind BOOLEAN NOT NULL DEFAULT TRUE,
+    person_stream_reltn_id BIGSERIAL NOT NULL PRIMARY KEY,
+    person_id BIGINT NOT NULL,
+    stream_id BIGINT NOT NULL,
+    person_stream_reltn_type_cd BIGINT NOT NULL,
+    create_dt_tm timestamptz NOT NULL,
+    updt_dt_tm timestamptz NOT NULL DEFAULT now()
+)
+WITH (
+    OIDS = FALSE
+)
+TABLESPACE meekbot;
+
+ALTER TABLE meekbot.person_stream_reltn
+    OWNER to "Mike";
+COMMENT ON TABLE meekbot.person
+    IS 'Contains users that have interacted with the bot';
+
+-- Index: xie1_code_set
+
+-- DROP INDEX meekbot.xie1_code_set;
+
+CREATE INDEX xie1_person_stream_reltn
+    ON meekbot.person_stream_reltn USING btree
+    (person_stream_reltn_id)
+    TABLESPACE meekbot;
+    
+CREATE INDEX xie2_person_stream_reltn
+    ON meekbot.person_stream_reltn USING btree
+    (person_id)
+    TABLESPACE meekbot;
+    
+CREATE INDEX xie3_person_stream_reltn
+    ON meekbot.person_stream_reltn USING btree
+    (stream_id)
+    TABLESPACE meekbot;

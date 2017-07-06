@@ -1,0 +1,36 @@
+CREATE TABLE meekbot.code_value
+(
+    active_ind BOOLEAN NOT NULL DEFAULT TRUE,
+    code_set smallint NOT NULL,
+    code_value BIGSERIAL PRIMARY KEY,
+    definition text COLLATE pg_catalog."default" NOT NULL,
+    description text COLLATE pg_catalog."default" NOT NULL,
+    display text COLLATE pg_catalog."default" NOT NULL,
+    display_key text COLLATE pg_catalog."default" NOT NULL,
+    create_dt_tm timestamptz NOT NULL,
+    updt_dt_tm timestamptz NOT NULL DEFAULT now()
+)
+WITH (
+    OIDS = FALSE
+)
+TABLESPACE meekbot;
+
+ALTER TABLE meekbot.code_value
+    OWNER to "Mike";
+COMMENT ON TABLE meekbot.code_value
+    IS 'Code Values for other tables to use as groupers.';
+
+COMMENT ON COLUMN meekbot.code_value.code_value
+    IS 'code value to link between usage tables and the definition of the field type';
+
+COMMENT ON COLUMN meekbot.code_value.code_set
+    IS 'code set used to group different code values together.';
+
+-- Index: xie1_code_value
+
+-- DROP INDEX meekbot.xie1_code_value;
+
+CREATE INDEX xie1_code_value
+    ON meekbot.code_value USING btree
+    (code_value)
+    TABLESPACE meekbot;

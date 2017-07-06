@@ -1,0 +1,25 @@
+CREATE TABLE meekbot.stream (
+    active_ind BOOLEAN NOT NULL DEFAULT TRUE,
+    stream_id BIGSERIAL NOT NULL PRIMARY KEY,
+    stream_name text COLLATE pg_catalog."default" NOT NULL,
+    create_dt_tm timestamptz NOT NULL,
+    updt_dt_tm timestamptz NOT NULL DEFAULT now()
+)
+WITH (
+    OIDS = FALSE
+)
+TABLESPACE meekbot;
+
+ALTER TABLE meekbot.stream
+    OWNER to "Mike";
+COMMENT ON TABLE meekbot.stream
+    IS 'Contains streams to which the bot connects';
+
+-- Index: xie1_code_set
+
+-- DROP INDEX meekbot.xie1_code_set;
+
+CREATE INDEX xie1_stream
+    ON meekbot.stream USING btree
+    (stream_id)
+    TABLESPACE meekbot;
