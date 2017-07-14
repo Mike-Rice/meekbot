@@ -6,7 +6,7 @@ import time
 from contextlib import contextmanager
 import settings
 
-class database():
+class database(object):
     """
     This class is for the database connection and data management for the bot.
     

@@ -6,7 +6,7 @@ import time, _thread
 from time import sleep, time
 import dbshell #database shell built for this bot
 
-class twitchStream():
+class twitchStream(object):
     """
     This class is the driver for a specific stream.  All stream activity will
     be handled inside of this class.
