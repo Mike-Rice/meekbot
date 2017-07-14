@@ -21,8 +21,8 @@ class twitchStream():
     last_active_list = list of users that were active the last time the 
                        viewerlist was refreshed
     """
-    def __init__(self, streamName):
-        self.stream_name = streamName
+    def __init__(self, stream_name):
+        self.stream_name = stream_name
         self.stream_socket = socket.socket()
         self.viewerlist = {}
         self.last_active_list = []
@@ -36,9 +36,8 @@ class twitchStream():
         else:
             self.stream_id = self.stream_db.add_stream(self.stream_name)
     
-    #Opens connection to channel
     def open_socket(self):
-        """Opens connection to the channel given to the class on init"""
+        """ Opens connection to the channel given to the class on init"""
         
         self.stream_socket.connect((settings.HOST, settings.PORT))
         self.stream_socket.send("PASS {}\r\n".format(settings.PASS).encode("utf-8"))
@@ -51,10 +50,9 @@ class twitchStream():
         print("Closing connection to: " + self.stream_name)
         self.stream_socket.send("QUIT".encode("utf-8"))
 
-    #joins a channel so that the content before user messages can be ignored
     def _join_room(self):
-        """Reads through all the returned text when a Twitch stream's 
-           room is joined."""
+        """ Reads through all the returned text when a Twitch stream's 
+            room is joined."""
            
         readbuffer = ""
         loading_flg = True
@@ -70,13 +68,13 @@ class twitchStream():
         #self.send_message("Did someone say bot?.")
             
     def _loading_complete(self,line):
-        """Returns whether or not the socket has received the last bit of text
-           before starting to see viewer messages
+        """ Returns whether or not the socket has received the last bit of text
+            before starting to see viewer messages
            
-           Parameters:
-             line - Line of text read in by the socket to evaluate
+            Parameters:
+                line - Line of text read in by the socket to evaluate
         
-           Returns: Boolean flag of whether this is the last line of room load
+            Returns: Boolean flag of whether this is the last line of room load
         """
            
         if("End of /NAMES list" in line):
@@ -87,45 +85,62 @@ class twitchStream():
     def send_message(self,message):
         """Sends a message to the channel to which the class is connected
         
-           Parameters:
-               message - The message to send to the chat
+            Parameters:
+                message - The message to send to the chat
         """
         
-        messageTemp = "PRIVMSG #" + self.stream_name + " :" + message + "\r\n"
-        self.stream_socket.send(messageTemp.encode("utf-8"))
-        print("Sent: " + messageTemp)
+        message_temp = "PRIVMSG #" + self.stream_name + " :" + message + "\r\n"
+        self.stream_socket.send(message_temp.encode("utf-8"))
+        print("Sent: " + message_temp)
 
-    #Method: getMessage
-    #Returns the user whom submitted a line to chat
-    #Paramenters:
-        #line - The most recent line parsed from the buffer
-    def getUser(self, line):
+    def get_user(self, line):
+        """Gets the username for the person who submitted a line to chat
+           
+            Parameters:
+                line - The last line read into the buffer
+              
+            Return:
+                user - the username of who submitted the message
+        """
         separate = line.split(":", 2)
         user = separate[1].split("!", 1)[0]
         return user
-        
-    #Method: getMessage
-    #Returns the message that a user submitted to chat
-    #Paramenters:
-        #line - The most recent line parsed from the buffer
-    def getMessage(self, line):
+
+    def get_message(self, line):
+        """Gets the message submitted to chat
+           
+            Parameters:
+                line - The last line read into the buffer
+              
+            Return:
+                message - the message submitted to chat
+        """
         separate = line.split(":", 2)
         message = separate[2]
         return message
 
-    #method to parse the incoming message to determine if there's a command in der
-    #look at changing this in the future to pull from a database containing all commands
-    def evalMessage(self, user, message):
-        keepRunning = True
+    def eval_message(self, user, message):
+        """Evaluates the message being passed in along with who submitted
+           
+            Parameters:
+                user - username of the person who sent the message
+                message - the message submitted to chat
+              
+            Return:
+                keep_running_flg - Flag to keep the bot running
+        """
+        keep_running_flg = True
         
-        #if a user is tagged call the functions to get the user and then increase the tag count
+        #if a user is tagged call the functions to get the user and then in
+        #crease the tag count used for stream engagement algorithm
         if "@" in message:
-            taggedUser = self.getTaggedUser(message)
+            taggedUser = self._get_tagged_user(message)
             if taggedUser[0] != "None":
                 for n in range(0, len(taggedUser)):
                     if taggedUser[n] != user:
                         self.setTagCount(taggedUser[n], self.getTagCount(taggedUser[n]) + 1)
                 
+        #TODO - CHANGE THIS TO EVALUATE COMMANDS FROM THE DATABASE
         if "You Suck" in message:
             self.send_message("No, you suck.")
 
@@ -133,19 +148,33 @@ class twitchStream():
             self.send_message("Taquitos are a delicious after pushup snack")
 
         #CHANGE THIS LATER TO PULL CHANNEL OWNER
-        elif (self.getUserLevel(user) == "mod" or user == "meekus1212") and "Exit" in message:
+        elif (
+               (   
+                   self.getUserLevel(user) == "mod" 
+                or user == "meekus1212"
+               ) 
+              and "Exit" in message
+              ):
             #self.send_message("That's all folks!")
             self.close_socket()
-            keepRunning = False
+            keep_running_flg = False
+
+        #if user not in viewerlist initiate them
+        if user not in self.viewerlist:
+            self._init_viewer(user, "viewer")
 
         #set the chat count to the existing chat count plus 1
         self.setChatCount(user, self.getChatCount(user)+1)
         
-        return keepRunning       
+        return keep_running_flg       
     
-    # Function: threadFillViewerList
-    # In a separate thread, fill up the op list
-    def threadFillViewerList(self):
+    def thread_fill_viewerList(self):
+        """Manages the active viewer list, viewer level, and ensures viewers
+           are in the database with the appropriate stream relationship and
+           relationship type.
+           
+           Runs in a seperate thread.
+        """
         while True:
             try:
                 url = "http://tmi.twitch.tv/group/user/"+ self.stream_name + "/chatters"
@@ -161,19 +190,19 @@ class twitchStream():
                     self.last_active_list.clear()    
                     #loop through and add each viewer into the dictionary
                     for p in data["chatters"]["moderators"]:
-                        self.initViewer(p, "mod")
+                        self._init_viewer(p, "mod")
                         self.last_active_list.append(p)
                     for p in data["chatters"]["global_mods"]:
-                        self.initViewer(p, "global_mod")
+                        self._init_viewer(p, "global_mod")
                         self.last_active_list.append(p)
                     for p in data["chatters"]["admins"]:
-                        self.initViewer(p, "admin")
+                        self._init_viewer(p, "admin")
                         self.last_active_list.append(p)
                     for p in data["chatters"]["staff"]:
-                        self.initViewer(p, "staff")
+                        self._init_viewer(p, "staff")
                         self.last_active_list.append(p)
                     for p in data["chatters"]["viewers"]:
-                        self.initViewer(p, "viewer")
+                        self._init_viewer(p, "viewer")
                         self.last_active_list.append(p)  
                         
                     #Go through viewers and get their person_id or add them to the database with the appropriate relation
@@ -181,12 +210,14 @@ class twitchStream():
             except:
                 'do nothing'
             
-            self.removeDepartedViewers()
+            self._remove_departed_viewers()
             #print(self.viewerlist)
             
             sleep(10) #only look at list every 30 seconds
     
-    def removeDepartedViewers(self):
+    def _remove_departed_viewers(self):
+        """Removes departed viewers from the active viewer list"""
+        
         departedViewers = list(set(list(self.viewerlist))-set(self.last_active_list))
 
 
@@ -196,18 +227,8 @@ class twitchStream():
                 #print("Removing " + departedViewers[n])
                 del self.viewerlist[departedViewers[n]]
         
-    
-    #returns the user's view level (mod/staff/admin/viewer/etc...)
-    def getUserLevel(self,user):    
-        if user in self.viewerlist:
-            userLevel = self.viewerlist[user]['viewlvl']
-        else:
-            userLevel = "viewer" #if user isn't found send back viewer since it has the least privs
-        
-        return userLevel
-    
     #Initialize a viewer in the viewer dictionary
-    def initViewer(self, user, viewlvl):
+    def _init_viewer(self, user, viewlvl):
 
         if user == self.stream_name:    #if the viewer is the streamer set to a streamer relationship
             streamReltn = 'streamer'
@@ -248,12 +269,39 @@ class twitchStream():
                                                              #so that I can clear inactive viewers from
                                                              #the list if they are no longer there
             
+    #Gets the user(s) tagged in the message.
+    def _get_tagged_user(self, message):
+        userTotalCnt = 0
+        taggedUser = []
+        
+        split_line = message.split(" ")
+
+        for word in split_line:
+            if word[0] == "@":
+                taggedUser.append(word[1:])
+                userTotalCnt += 1
+        
+        #default to none
+        if userTotalCnt == 0:
+            taggedUser.append("None")
+        
+        return taggedUser
+
+    #TODO - CONVERT THE FOLLOWING INTO A USER CLASS TO STORE ALL VIEWR INFO
+    #NOT TOUCHING IN PYTHONIFY PROJECT SINCE THIS WILL ALL BE RE-WORKED
+
+    #returns the user's view level (mod/staff/admin/viewer/etc...)
+    def getUserLevel(self,user):    
+        if user in self.viewerlist:
+            userLevel = self.viewerlist[user]['viewlvl']
+        else:
+            userLevel = "viewer" #if user isn't found send back viewer since it has the least privs
+        
+        return userLevel
+    
+
     #increases the number of messages submitted by a viewer.
     def setChatCount(self, user, chatCnt):
-        #if user not in viewerlist initiate them
-        if user not in self.viewerlist:
-            self.initViewer(user, "viewer")
-            
         self.viewerlist[user]['chatCnt'] = chatCnt
         self.setLastActiveDTTM(user, time()) #chat count updated, set last active date time for user
     
@@ -294,20 +342,3 @@ class twitchStream():
         if user in self.viewerlist:
             self.viewerlist[user]['lastActiveDTTM'] = activeDTTM
         
-    #Gets the user(s) tagged in the message.
-    def getTaggedUser(self, message):
-        userTotalCnt = 0
-        taggedUser = []
-        
-        split_line = message.split(" ")
-
-        for word in split_line:
-            if word[0] == "@":
-                taggedUser.append(word[1:])
-                userTotalCnt += 1
-        
-        #default to none
-        if userTotalCnt == 0:
-            taggedUser.append("None")
-        
-        return taggedUser

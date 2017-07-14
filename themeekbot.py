@@ -21,7 +21,7 @@ def main():
     streamCon.open_socket()
 
     #populate viewer list into dictionary
-    _thread.start_new_thread(streamCon.threadFillViewerList, ())
+    _thread.start_new_thread(streamCon.thread_fill_viewerList, ())
     
     runFlag = True #escape variable to kill the bot at any time
     
@@ -39,13 +39,13 @@ def main():
                 try:
                     print(line.encode('utf-8'))
     
-                    user = streamCon.getUser(line)                    
-                    message = streamCon.getMessage(line)
+                    user = streamCon.get_user(line)                    
+                    message = streamCon.get_message(line)
                     
                     print (user + " typed :" + message)
 
                     try:
-                        runFlag = streamCon.evalMessage(user,message)
+                        runFlag = streamCon.eval_message(user,message)
                     except:
                         logging.debug("Message Eval Exception")
                         logging.debug(user + ":" + message)
