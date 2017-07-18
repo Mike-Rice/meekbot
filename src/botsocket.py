@@ -1,6 +1,7 @@
 import socket
 import string
 import settings
+import viewer
 import urllib.request, json
 import time, _thread
 from time import sleep, time
@@ -130,7 +131,11 @@ class twitchStream(object):
                 keep_running_flg - Flag to keep the bot running
         """
         keep_running_flg = True
-        
+
+        #if user not in viewerlist initiate them
+        if user not in self.viewerlist:
+            self._init_viewer(user, "viewer")
+
         #if a user is tagged call the functions to get the user and then in
         #crease the tag count used for stream engagement algorithm
         if "@" in message:
@@ -138,7 +143,7 @@ class twitchStream(object):
             if taggedUser[0] != "None":
                 for n in range(0, len(taggedUser)):
                     if taggedUser[n] != user:
-                        self.setTagCount(taggedUser[n], self.getTagCount(taggedUser[n]) + 1)
+                        self.viewerlist[user].tag_cnt += 1
                 
         #TODO - CHANGE THIS TO EVALUATE COMMANDS FROM THE DATABASE
         if "You Suck" in message:
@@ -159,12 +164,8 @@ class twitchStream(object):
             self.close_socket()
             keep_running_flg = False
 
-        #if user not in viewerlist initiate them
-        if user not in self.viewerlist:
-            self._init_viewer(user, "viewer")
-
         #set the chat count to the existing chat count plus 1
-        self.setChatCount(user, self.getChatCount(user)+1)
+        self.viewerlist[user].chat_cnt += 1
         
         return keep_running_flg       
     
@@ -238,10 +239,10 @@ class twitchStream(object):
             
         if user in self.viewerlist: #if the viewer is already in the list make sure the relationships line up
             #update viewer level if it has changed
-            if streamReltn != self.viewerlist[user]['viewlvl']:
-                self.viewerlist[user]['viewlvl'] = streamReltn
-                self.stream_db.update_person_stream_reltn(self.viewerlist[user]['person_id'], self.stream_id, streamReltn)
-                
+            if streamReltn != self.viewerlist[user].view_lvl:
+                self.viewerlist[user].view_lvl = streamReltn
+                self.stream_db.update_person_stream_reltn(self.viewerlist[user].person_id, self.stream_id, streamReltn)
+  
         else:
             personID = self.stream_db.get_person_id(user)
             print('Caputred person_id = ' + str(personID))
@@ -256,19 +257,9 @@ class twitchStream(object):
                     personID = 0
             else:# personID > 0:
                 self.stream_db.update_person_stream_reltn(personID, self.stream_id, streamReltn)
-                print('Test')
             
-            self.viewerlist[user] = {}
-            self.viewerlist[user]['person_id'] = personID
-            self.viewerlist[user]['viewlvl'] = streamReltn
-            self.viewerlist[user]['chatCnt'] = 0
-            self.viewerlist[user]['gamingTag'] = "none"
-            self.viewerlist[user]['tagCnt'] = 0
-            self.viewerlist[user]['begActiveDTTM'] = time()  #when viewer started watching stream
-            self.viewerlist[user]['lastActiveDTTM'] = time() #default to initial time loaded
-                                                             #so that I can clear inactive viewers from
-                                                             #the list if they are no longer there
-            
+            self.viewerlist[user] = viewer.viewer(personID, user, streamReltn)
+
     #Gets the user(s) tagged in the message.
     def _get_tagged_user(self, message):
         userTotalCnt = 0
@@ -287,58 +278,11 @@ class twitchStream(object):
         
         return taggedUser
 
-    #TODO - CONVERT THE FOLLOWING INTO A USER CLASS TO STORE ALL VIEWR INFO
-    #NOT TOUCHING IN PYTHONIFY PROJECT SINCE THIS WILL ALL BE RE-WORKED
-
     #returns the user's view level (mod/staff/admin/viewer/etc...)
     def getUserLevel(self,user):    
         if user in self.viewerlist:
-            userLevel = self.viewerlist[user]['viewlvl']
+            userLevel = self.viewerlist[user].view_lvl#['viewlvl']
         else:
             userLevel = "viewer" #if user isn't found send back viewer since it has the least privs
         
         return userLevel
-    
-
-    #increases the number of messages submitted by a viewer.
-    def setChatCount(self, user, chatCnt):
-        self.viewerlist[user]['chatCnt'] = chatCnt
-        self.setLastActiveDTTM(user, time()) #chat count updated, set last active date time for user
-    
-    def getChatCount(self, user):
-        retval = 0 #default to 0
-        
-        if user in self.viewerlist:
-            retval = self.viewerlist[user]['chatCnt']
-        
-        return retval
-
-    #increases the number of messages submitted by a viewer.
-    def setTagCount(self, user, tagCnt):
-
-        #if user not in viewerlist don't worry about increasing tag count
-        if user in self.viewerlist:
-            self.viewerlist[user]['tagCnt'] = tagCnt
-    
-    
-    def getTagCount(self, user):
-        retval = 0 #default to 0
-        
-        if user in self.viewerlist:
-            retval = self.viewerlist[user]['tagCnt']
-                
-        return retval
-
-    def getLastActiveDTTM(self, user):
-        retval = 0.0
-        
-        if user in self.viewerlist:
-            retval = self.viewerlist[user]['lastActiveDTTM']
-        
-        return retval
-    
-    def setLastActiveDTTM(self, user, activeDTTM):
-        
-        if user in self.viewerlist:
-            self.viewerlist[user]['lastActiveDTTM'] = activeDTTM
-        
