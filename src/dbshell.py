@@ -179,3 +179,67 @@ class database(object):
 
         except:
             print("Failed updating relationship in dbshell.updatePersonStreamReltn")
+            
+    def get_stream_reward_info(self,stream_id):
+        """Get a stream's reward information from the database.  Includes
+           reward point name, rate, duration between gain, and duration unit
+        
+        Paramters:
+            stream_id - Stream ID of active stream from meekbot.stream table
+
+        Returns: List of results in the following order:
+                - Point Name
+                - Reward Rate (number of points)
+                - Reward Rate Duration (Time between reward increase)
+                - Reward Rate Duration Unit (Time unit of reward rate)
+                OR
+                - "None" if no rewards found
+        """        
+        sql = """SELECT stream_reward.point_name ,stream_reward.reward_rate 
+                 ,stream_reward.reward_dur,code_value.display
+           FROM meekbot.stream_reward
+                JOIN meekbot.code_value ON code_value.code_value = stream_reward.reward_dur_unit_cd
+            WHERE stream_reward.stream_id = {}
+            AND stream_reward.active_ind = true
+            AND code_value.active_ind = true"""
+            
+        try:           
+            with self.get_cursor() as cursor:
+                cursor.execute(sql.format(stream_id))
+                if cursor.rowcount > 0:
+                    record = cursor.fetchone()
+                else:
+                    record = "None"
+        except:
+            print("Failed getting reward info from dbshell.get_stream_reward_info")
+        
+        return record
+    
+    def get_person_stream_rewards(self, stream_id, person_id):
+        """Gets the number of reward points a viewer has for the current stream
+        
+            Parameters:
+                stream_id = id of the stream from the meekbot.stream table
+                person_id = id of the viewer from the meekbot.person table
+            Returns:
+                Quantity of reward points from meekbot.person_stream_reward
+        """
+        reward_pts = 0 #if no row found than return 0 points
+        
+        sql = """SELECT qty FROM meekbot.person_stream_reward 
+                 WHERE stream_id = {} AND person_id = {} and active_ind = true;"""
+            
+        try:           
+            with self.get_cursor() as cursor:
+                cursor.execute(sql.format(stream_id, person_id))
+                if cursor.rowcount > 0:
+                    record = cursor.fetchone()
+                    reward_pts = record[0]
+                else:
+                    record = "None"
+        except:
+            print("Failed getting reward points from dbshell.get_person_stream_rewards")
+        
+        return reward_pts
+    
+        

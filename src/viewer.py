@@ -17,7 +17,9 @@ class viewer(object):
         self.gaming_tags = [] #list since it could be multiple services
         self.tag_cnt = 0
         self.chat_cnt = 0
-        self.reward_pt_cnt = 0
+        self.reward_points = 0
+        self.reward_ticks = 0
+        
         
         
     """
