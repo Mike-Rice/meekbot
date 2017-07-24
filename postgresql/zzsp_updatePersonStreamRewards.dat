@@ -1,0 +1,20 @@
+CREATE OR REPLACE FUNCTION meekbot.updatePersonStreamRewards(personID bigint, streamID bigint, new_qty bigint)
+RETURNS void AS $$
+
+DECLARE
+ var_reward_id bigint := 0;
+ 
+BEGIN
+  SELECT person_stream_reward_id INTO var_reward_id FROM meekbot.person_stream_reward WHERE person_id = personID AND stream_id = streamID and active_ind = true;
+  
+  IF var_reward_id = 0 THEN
+    INSERT INTO meekbot.person_stream_reward(person_id, stream_id, new_qty,create_dt_tm) VALUES (personID, streamID, qty, now());
+  ELSE
+    UPDATE meekbot.person_stream_reltn SET qty=new_qty, updt_dt_tm=now() WHERE person_id = var_reward_id and active_ind = true;
+
+  END IF;
+
+ -- logic
+END;
+$$
+LANGUAGE plpgsql;

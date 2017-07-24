@@ -1,25 +1,37 @@
 CREATE TABLE meekbot.person (
-    active_ind BOOLEAN NOT NULL DEFAULT TRUE,
-    person_id BIGSERIAL NOT NULL PRIMARY KEY,
-    username text COLLATE pg_catalog."default" NOT NULL,
-    create_dt_tm timestamptz NOT NULL,
+    
+active_ind BOOLEAN NOT NULL DEFAULT TRUE
+,person_id BIGSERIAL NOT NULL PRIMARY KEY
+,username text COLLATE pg_catalog."default" NOT NULL
+,
+    create_dt_tm timestamptz NOT NULL
+,
     updt_dt_tm timestamptz NOT NULL DEFAULT now()
+
 )
+
 WITH (
     OIDS = FALSE
-)
-TABLESPACE meekbot;
+) TABLESPACE meekbot;
+
+
 
 ALTER TABLE meekbot.person
     OWNER to "Mike";
+
+
 COMMENT ON TABLE meekbot.person
-    IS 'Contains users that have interacted with the bot';
+ IS 'Contains users that have interacted with the bot';
+
+
 
 -- Index: xie1_code_set
 
--- DROP INDEX meekbot.xie1_code_set;
+-- 
+DROP INDEX meekbot.xie1_code_set;
+
 
 CREATE INDEX xie1_person
-    ON meekbot.person USING btree
-    (person_id)
-    TABLESPACE meekbot;
+ ON meekbot.person USING btree
+ (person_id)
+ TABLESPACE meekbot;

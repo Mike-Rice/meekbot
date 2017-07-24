@@ -21,6 +21,17 @@ class twitchStream(object):
     viwerlist = dictionary of viewers in the channel
     last_active_list = list of users that were active the last time the 
                        viewerlist was refreshed
+    _reward_name = name of the rewards for this particular stream
+    _reward_rate = rate of reward accrual
+    _reward_time_dur = duration of time between accrual
+    _reward_dur_unit = time unit of reward accural (sec/min/hour/day)
+                        if seconds chosen, minimum of 30 seconds required
+    _30_sec_tick = the number of times 30 seconds has passed between sleeps
+    _max_tick = number of ticks before resetting _30_sec_tick
+    _db_tick_cnt = number of ticks since the database was last updated. Used
+                   to cache changes and update the database every 5 minutes
+    _db_max_tick = max number of ticks before the cached info is pushed to the
+                   database
     """
     def __init__(self, stream_name):
         self.stream_name = stream_name
@@ -28,12 +39,45 @@ class twitchStream(object):
         self.viewerlist = {}
         self.last_active_list = []
         
+        #reward system vars
+        self._reward_name = "none"
+        self._reward_rate = 1
+        self._reward_time_dur = 30
+        self._reward_dur_unit = 'Seconds'
+        self._30_sec_tick = 0
+        self._max_tick = 0 #default to 0 to ignore if stream opts out
+        self._db_tick_cnt = 0
+        self._db_max_tick = 10 #updates the database every 5 minutes
+        
         #connects to the database to grab the streamer stream id or enter 
         #streamer into the database
         self.stream_db = dbshell.database()
         self.stream_id = self.stream_db.check_stream(self.stream_name)
         if self.stream_id > 0:
             print('Found the streamer!')
+            
+            #Get Stream reward info from database
+            rewards= self.stream_db.get_stream_reward_info(self.stream_id)
+            if rewards != "None":
+                self._reward_name = rewards[0]
+                self._reward_rate = rewards[1]
+                self._reward_time_dur = rewards[2]
+                self._reward_time_dur_unit = rewards[3]
+                
+                #sets reward time duration to seconds
+                #TODO - CHANGE THIS SO THAT IT IS STORED IN SECONDS WHEN
+                #ENTERED FROM FRONT END.  NEED TO BUILD FRONT END
+                if self._reward_time_dur_unit == 'Minute':
+                    self._reward_time_dur = self._reward_time_dur * 60
+                    self._reward_time_dur_unit = 'Second'
+                elif self._reward_time_dur_unit == 'Hour':
+                    self._reward_time_dur = self._reward_time_dur * 3600
+                    self._reward_time_dur_unit = 'Second'
+                elif self._reward_time_dur_unit == 'Day':
+                    self._reward_time_dur = self._reward_time_dur * 86400
+                    self._reward_time_dur_unit = 'Second'
+                
+                self._max_tick = self._reward_time_dur / 30
         else:
             self.stream_id = self.stream_db.add_stream(self.stream_name)
     
@@ -155,7 +199,7 @@ class twitchStream(object):
         #CHANGE THIS LATER TO PULL CHANNEL OWNER
         elif (
                (   
-                   self.getUserLevel(user) == "mod" 
+                   self.get_user_level(user) == "mod" 
                 or user == "meekus1212"
                ) 
               and "Exit" in message
@@ -213,31 +257,64 @@ class twitchStream(object):
             
             self._remove_departed_viewers()
             #print(self.viewerlist)
+            self._db_tick_cnt += 1
             
-            sleep(10) #only look at list every 30 seconds
+            if(self._db_tick_cnt == self._db_max_tick):
+                self._db_tick_cnt = 0 #reset tick count
+                for user in self.viewerlist:
+                    self.stream_db.update_user_rewards(self.stream_id, 
+                                                       self.viewerlist[user].person_id, 
+                                                       self.viewerlist[user].reward_points)
+            
+            sleep(10) #only look at list every 10 seconds
     
     def _remove_departed_viewers(self):
         """Removes departed viewers from the active viewer list"""
         
         departedViewers = list(set(list(self.viewerlist))-set(self.last_active_list))
 
-
         for n in range(1,len(departedViewers)):
             if departedViewers[n] in self.viewerlist:
                 #make sure to update database values for user
                 #print("Removing " + departedViewers[n])
+                self.stream_db.update_user_rewards(self.stream_id, 
+                                                   self.viewerlist[departedViewers[n]].person_id, 
+                                                   self.viewerlist[departedViewers[n]].reward_points)
                 del self.viewerlist[departedViewers[n]]
         
-    #Initialize a viewer in the viewer dictionary
     def _init_viewer(self, user, viewlvl):
+        """Initializes the viewer and puts the viewer object into viewerlist.
+        
+           If the viewer doesn't have a relationship with the stream one is
+           created. If the viewer relationship is different than what is in the database
+           it is updated.
+           
+           Since this is called for each iteration of the viewerlist population
+           the rewards counter is increased in this function as well.
+           
+           Parameters:
+               user = Username of the viewer
+               viewlvl = The permission level of the viewer
+        
+        """
 
         if user == self.stream_name:    #if the viewer is the streamer set to a streamer relationship
             streamReltn = 'streamer'
         else:
             streamReltn = viewlvl
             
-            
         if user in self.viewerlist: #if the viewer is already in the list make sure the relationships line up
+            
+            #No rewards for stream
+            if self._max_tick != 0:
+                #Updates the viewer's reward tick count as well as reward points if
+                #they meet the threshhold
+                if ((self.viewerlist[user].reward_ticks + 1) == self._max_tick):
+                    self.viewerlist[user].reward_ticks = 0
+                    self.viewerlist[user].reward_points += self._reward_rate
+                else:
+                    self.viewerlist[user].reward_ticks += 1
+            
             #update viewer level if it has changed
             if streamReltn != self.viewerlist[user].view_lvl:
                 self.viewerlist[user].view_lvl = streamReltn
@@ -259,9 +336,18 @@ class twitchStream(object):
                 self.stream_db.update_person_stream_reltn(personID, self.stream_id, streamReltn)
             
             self.viewerlist[user] = viewer.viewer(personID, user, streamReltn)
+            
+            #get number of reward points for user in stream
+            self.viewerlist[user].reward_points = self.stream_db.get_person_stream_rewards(self.stream_id, personID)
 
-    #Gets the user(s) tagged in the message.
     def _get_tagged_user(self, message):
+        """Parses out the message to determine which viewers were tagged.
+        
+           Parameters:
+               - message = The message being parsed
+           
+           Returns: A list of tagged users
+        """
         userTotalCnt = 0
         taggedUser = []
         
@@ -279,7 +365,7 @@ class twitchStream(object):
         return taggedUser
 
     #returns the user's view level (mod/staff/admin/viewer/etc...)
-    def getUserLevel(self,user):    
+    def get_user_level(self,user):    
         if user in self.viewerlist:
             userLevel = self.viewerlist[user].view_lvl#['viewlvl']
         else:

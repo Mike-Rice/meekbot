@@ -1,0 +1,33 @@
+CREATE TABLE meekbot.person_stream_reward (
+active_ind BOOLEAN NOT NULL DEFAULT TRUE
+,person_stream_reward_id BIGSERIAL NOT NULL PRIMARY KEY
+,stream_id BIGINT NOT NULL
+,person_id BIGINT NOT NULL
+,qty BIGINT NOT NULL
+,create_dt_tm timestamptz NOT NULL
+,updt_dt_tm timestamptz NOT NULL DEFAULT now()
+)
+
+WITH (
+    OIDS = FALSE
+) TABLESPACE meekbot;
+
+ALTER TABLE meekbot.person_stream_reward    OWNER to "Mike";
+
+COMMENT ON TABLE meekbot.person_stream_reward
+ IS 'Contains the amount of reward points a viewer has for a stream';
+
+CREATE INDEX xie1_person_stream_reward
+ ON meekbot.person_stream_reward USING btree
+ (person_stream_reward_id)
+ TABLESPACE meekbot;
+
+CREATE INDEX xie2_person_stream_reward
+ ON meekbot.person_stream_reward USING btree
+ (stream_id)
+ TABLESPACE meekbot;
+
+CREATE INDEX xie3_person_stream_reward
+ ON meekbot.person_stream_reward USING btree
+ (person_id)
+ TABLESPACE meekbot;

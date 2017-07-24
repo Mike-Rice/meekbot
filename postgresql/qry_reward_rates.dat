@@ -1,0 +1,14 @@
+SELECT
+stream.stream_name
+,stream_reward.point_name
+,stream_reward.reward_rate
+,stream_reward.reward_dur
+,code_value.display
+FROM
+  meekbot.stream_reward
+  JOIN meekbot.stream ON stream.stream_id = stream_reward.stream_id
+  JOIN meekbot.code_value ON code_value.code_value = stream_reward.reward_dur_unit_cd
+  
+WHERE stream_reward.stream_id = 6
+  AND stream_reward.active_ind = true
+  AND code_value.active_ind = true

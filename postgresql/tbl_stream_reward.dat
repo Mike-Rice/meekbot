@@ -1,0 +1,30 @@
+CREATE TABLE meekbot.stream_reward (
+active_ind BOOLEAN NOT NULL DEFAULT TRUE
+,stream_reward_id BIGSERIAL NOT NULL PRIMARY KEY
+,stream_id BIGINT NOT NULL
+,point_name text COLLATE pg_catalog."default" NOT NULL
+,reward_rate SMALLINT NOT NULL
+,reward_dur SMALLINT NOT NULL
+,reward_dur_unit_cd BIGINT NOT NULL
+,create_dt_tm timestamptz NOT NULL
+,updt_dt_tm timestamptz NOT NULL DEFAULT now()
+)
+
+WITH (
+    OIDS = FALSE
+) TABLESPACE meekbot;
+
+ALTER TABLE meekbot.stream_reward    OWNER to "Mike";
+
+COMMENT ON TABLE meekbot.rewards
+ IS 'Contains basic stream reward information';
+
+CREATE INDEX xie1_stream_reward
+ ON meekbot.stream_reward USING btree
+ (stream_reward_id)
+ TABLESPACE meekbot;
+
+CREATE INDEX xie2_stream_reward
+ ON meekbot.stream_reward USING btree
+ (stream_id)
+ TABLESPACE meekbot;
