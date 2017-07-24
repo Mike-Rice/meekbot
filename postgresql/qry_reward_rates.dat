@@ -11,3 +11,4 @@ FROM
   
 WHERE stream_reward.stream_id = 6
   AND stream_reward.active_ind = true
+  AND code_value.active_ind = true

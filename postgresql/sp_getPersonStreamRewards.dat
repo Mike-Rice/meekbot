@@ -1,0 +1,20 @@
+CREATE OR REPLACE FUNCTION meekbot.getPersonStreamRewards(personID bigint, streamID bigint)
+RETURNS bigint AS $REWARD_QTY$
+
+DECLARE
+found_id BIGINT := 0;
+rewards BIGINT := 0;
+
+BEGIN
+  SELECT person_stream_reward_id, qty INTO found_id, rewards FROM meekbot.person_stream_reward WHERE person_id = personID AND stream_id = streamID and active_ind = true;
+  
+  IF found_id < 1 THEN
+    INSERT INTO meekbot.person_stream_reward(person_id, stream_id, qty,create_dt_tm) VALUES (personID, streamID, 0, now());
+  END IF;
+
+ -- logic
+RETURN rewards;
+
+END;
+$REWARD_QTY$
+LANGUAGE plpgsql;

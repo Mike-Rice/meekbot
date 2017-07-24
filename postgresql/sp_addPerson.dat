@@ -1,16 +1,33 @@
 CREATE OR REPLACE FUNCTION meekbot.addPerson(person_name text, streamID bigint, relation text)
+
 RETURNS bigint AS $PERSON$
+
+
 DECLARE
- relationship_cd bigint := 0;
- personID bigint := 0;
+ 
+relationship_cd bigint := 0;
+ 
+personID bigint := 0;
+
+
 BEGIN
- SELECT code_value.code_value INTO relationship_cd FROM meekbot.code_value WHERE code_set = 1 AND display_key = relation;
  
- INSERT INTO meekbot.person(username, create_dt_tm)	VALUES (person_name, now()) RETURNING person.person_id INTO personID;
+SELECT code_value.code_value INTO relationship_cd FROM meekbot.code_value WHERE code_set = 1 AND display_key = relation;
  
- INSERT INTO meekbot.person_stream_reltn(person_id, stream_id, person_stream_reltn_type_cd, create_dt_tm) VALUES (personID, streamID, relationship_cd, now());
- -- logic
- RETURN personID;
+ 
+
+INSERT INTO meekbot.person(username, create_dt_tm)	VALUES (person_name, now()) RETURNING person.person_id INTO personID;
+ 
+ 
+
+INSERT INTO meekbot.person_stream_reltn(person_id, stream_id, person_stream_reltn_type_cd, create_dt_tm) VALUES (personID, streamID, relationship_cd, now());
+ 
+
+-- logic
+ 
+
+RETURN personID;
+
 END;
 $PERSON$
 LANGUAGE plpgsql;
