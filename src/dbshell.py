@@ -179,3 +179,16 @@ class database(object):
 
         except:
             print("Failed updating relationship in dbshell.updatePersonStreamReltn")
+
+    # TODO - Add logic to accept multiple parameters as a variable to go into meekbot.command_detail
+    # TODO - Create a stored procedure to handle this
+    def add_stream_command(self, stream_id, command_name, command_text, stream_relation_req, duration, dur_unit):
+        sql = """INSERT INTO meekbot.commands(stream_id
+                  , command_name
+                  , command_string
+                  , command_type_cd
+                  , stream_reltn_cd
+                  , cooldown_dur
+                  , cooldown_dur_unit_cd
+                  , create_dt_tm) VALUES
+                  (6, '!meekus', 'Meekus is the bestest ever', 13, 3, 1, 7,now());"""

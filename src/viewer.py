@@ -11,7 +11,8 @@ class viewer(object):
         self.person_id = person_id
         self.username = username
         self.view_lvl = view_lvl
-        self.bot_permissions = 0 #TODO - Add bot specific permissions in the DB
+        self.bot_permissions = 5 # TODO - Add bot specific permissions in the DB
+                                 # Streamer will be value 0, going up from there.
         
         #set defaults for all values
         self.gaming_tags = [] #list since it could be multiple services

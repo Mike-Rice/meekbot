@@ -4,10 +4,11 @@ import _thread
 from time import sleep
 import logging
 
+
 def main():
     """Primary function to execute meekbot"""    
     
-    #TODO: Adjust once a web framework is setup to run the bot script
+    # TODO: Adjust once a web framework is setup to run the bot script
     streamName = input("Enter the stream name you wish to join: ")
 
     #set logging to include date/time and message
@@ -20,7 +21,7 @@ def main():
     streamCon = twitchStream(streamName)
     streamCon.open_socket()
 
-    #populate viewer list into dictionary
+    # populate viewer list into dictionary
     _thread.start_new_thread(streamCon.thread_fill_viewerList, ())
     
     runFlag = True #escape variable to kill the bot at any time
@@ -34,7 +35,7 @@ def main():
             readbuffer = readbuffer + response
             temp = readbuffer.split("\r\n")
             readbuffer = temp.pop()
-    		
+            
             for line in temp:
                 try:
                     print(line.encode('utf-8'))
@@ -50,7 +51,7 @@ def main():
                         logging.debug("Message Eval Exception")
                         logging.debug(user + ":" + message)
                 except:
-                    #log this into the exceptions log file
+                    # log this into the exceptions log file
                     print("Message exception")
                     logging.debug("Line Read Exception")
                     logging.debug(line.encode('utf-8'))
