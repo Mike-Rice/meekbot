@@ -1,8 +1,9 @@
-import psycopg2
+#import psycopg2
+#import sys
+#import string
+#import time
+
 import psycopg2.pool as pool
-import sys
-import string
-import time
 from contextlib import contextmanager
 import settings
 
@@ -192,3 +193,57 @@ class database(object):
                   , cooldown_dur_unit_cd
                   , create_dt_tm) VALUES
                   (6, '!meekus', 'Meekus is the bestest ever', 13, 3, 1, 7,now());"""
+
+    def get_stream_commands(self, stream_id):
+        """Gets all commands for a specific stream
+
+        Paramters:
+            stream_id - Stream ID from meekbot.stream
+
+        Return:
+            cmd_list - List of commands containing:
+                            - command_id
+                            - command_name
+                            - command_text
+                            - parameters
+        """
+        cmd_list = []
+        try:
+            sql = """SELECT
+                     commands.command_id
+                    ,commands.command_name
+                    ,commands.command_string
+                    ,cv.description
+                    ,commands.cooldown_dur
+                    ,cv1.description
+                    ,cv2.description
+                    ,command_detail.detail_name
+                    ,command_detail.detail_text
+                    ,command_detail.detail_num
+                    ,cv3.description
+                FROM meekbot.commands
+                    join meekbot.code_value cv on cv.code_value = meekbot.commands.command_type_cd
+                    join meekbot.code_value cv1 on cv1.code_value = meekbot.commands.cooldown_dur_unit_cd
+                    join meekbot.code_value cv2 on cv2.code_value = meekbot.commands.stream_reltn_cd
+                    LEFT OUTER JOIN meekbot.command_detail on command_detail.command_id = meekbot.commands.command_id
+                    LEFT OUTER JOIN meekbot.code_value cv3 on cv3.code_value = meekbot.command_detail.detail_type_cd
+                
+                WHERE commands.stream_id = {}
+                  AND commands.active_ind = TRUE
+                  AND cv.active_ind = TRUE
+                  AND cv1.active_ind = TRUE
+                  AND cv2.active_ind = TRUE
+                  
+                ORDER BY command_detail.seq;"""
+
+            with self.get_cursor() as cursor:
+                cursor.execute(sql.format(stream_id))
+                if cursor.rowcount > 0:
+                    records = cursor.fetchall()
+                    cmd_list = records
+
+        except:
+            print("Failed getting command_list in dbshell.get_stream_commands")
+            cmd_list[0] = -1  # return a negative value so that the script knows that the query failed
+
+        return cmd_list

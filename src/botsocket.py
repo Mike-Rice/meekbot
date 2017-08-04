@@ -1,15 +1,15 @@
 import socket
-import string
+# import string
 import urllib.request
 import json
-import time, _thread
-from time import sleep, time
+# import time, _thread
+from time import sleep # , time
 
 # meekbot files/classes
 import viewer
 import dbshell
 import settings
-import command
+import stream_command
 
 
 class twitchStream(object):
@@ -32,6 +32,7 @@ class twitchStream(object):
         self.stream_name = stream_name
         self.stream_socket = socket.socket()
         self.viewerlist = {}
+        self.command_list = {}
         self.last_active_list = []
         
         # connects to the database to grab the streamer stream id or enter
@@ -43,8 +44,8 @@ class twitchStream(object):
         else:
             self.stream_id = self.stream_db.add_stream(self.stream_name)
 
-        # Call dbshell function to populate all commands for the specific stream
-    
+        self._get_command_list()
+
     def open_socket(self):
         """ Opens connection to the channel given to the class on init"""
 
@@ -295,6 +296,49 @@ class twitchStream(object):
         if user in self.viewerlist:
             userLevel = self.viewerlist[user].view_lvl#['viewlvl']
         else:
-            userLevel = "viewer" #if user isn't found send back viewer since it has the least privs
+            userLevel = "viewer" # if user isn't found send back viewer since it has the least privs
         
         return userLevel
+
+
+    def _get_command_list(self):
+        """ Gets a list of commands for the stream and places them in a list of command objects.  Each command object
+            contains the details of the command in the form of variables/counters/etc...
+
+        :return: Nothing
+        """
+        cmd_tuple = self.stream_db.get_stream_commands(self.stream_id)
+
+        for i in range(len(cmd_tuple)):
+            temp_list = list(cmd_tuple[i])
+            command_id = temp_list[0]
+            command_name = temp_list[1]
+            command_text = temp_list[2]
+            command_type = temp_list[3]
+            command_cooldown_dur = temp_list[4]
+            command_cooldown_dur_unit = temp_list[5]
+            command_reltn_lvl = temp_list[6]
+            detail_name = temp_list[7]
+            detail_text = temp_list[8]
+            detail_num = temp_list[9]
+            detail_type = temp_list[10]
+
+            # if the command is already in the list get the new details added
+            if command_name not in self.command_list:
+                self.command_list[command_name] = stream_command.cmd(self.stream_id, command_name, command_id)
+                self.command_list[command_name].command_text = command_text
+                self.command_list[command_name].command_type = command_type
+                self.command_list[command_name].cooldown_dur = command_cooldown_dur
+                self.command_list[command_name].cooldown_dur_unit = command_cooldown_dur_unit
+                self.command_list[command_name].command_req_permissions = command_reltn_lvl
+
+            #start appending details
+            detail_list = []
+            detail_list.append(detail_name)
+            detail_list.append(detail_text)
+            detail_list.append(detail_num)
+            detail_list.append(detail_type)
+
+            self.command_list[command_name].command_vars.append(detail_list)
+
+            print(self.command_list[command_name].print())
