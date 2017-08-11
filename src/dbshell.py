@@ -181,19 +181,6 @@ class database(object):
         except:
             print("Failed updating relationship in dbshell.updatePersonStreamReltn")
 
-    # TODO - Add logic to accept multiple parameters as a variable to go into meekbot.command_detail
-    # TODO - Create a stored procedure to handle this
-    def add_stream_command(self, stream_id, command_name, command_text, stream_relation_req, duration, dur_unit):
-        sql = """INSERT INTO meekbot.commands(stream_id
-                  , command_name
-                  , command_string
-                  , command_type_cd
-                  , stream_reltn_cd
-                  , cooldown_dur
-                  , cooldown_dur_unit_cd
-                  , create_dt_tm) VALUES
-                  (6, '!meekus', 'Meekus is the bestest ever', 13, 3, 1, 7,now());"""
-
     def get_stream_commands(self, stream_id):
         """Gets all commands for a specific stream
 
@@ -221,6 +208,7 @@ class database(object):
                     ,command_detail.detail_text
                     ,command_detail.detail_num
                     ,cv3.description
+                    ,command_detail.command_detail_id
                 FROM meekbot.commands
                     join meekbot.code_value cv on cv.code_value = meekbot.commands.command_type_cd
                     join meekbot.code_value cv1 on cv1.code_value = meekbot.commands.cooldown_dur_unit_cd
@@ -247,3 +235,40 @@ class database(object):
             cmd_list[0] = -1  # return a negative value so that the script knows that the query failed
 
         return cmd_list
+
+
+
+    def add_stream_cmd(self, stream_id, prm_lvl, cooldown, cmd_name, cmd_txt):
+
+        cmd_id = 0
+        try:
+            sql = """SELECT * FROM meekbot.addStreamCmd({}, '{}', {}, '{}', '{}', '{}')"""
+            print(sql.format(stream_id, prm_lvl, cooldown, cmd_name.lower(), cmd_txt))
+
+            with self.get_cursor() as cursor:
+                cursor.execute(sql.format(stream_id, prm_lvl, cooldown, cmd_name.lower(), cmd_txt, 'TEXTOUTPUT'))
+                cmd_id = cursor.fetchone()[0]
+                print('Command ID = ' + str(cmd_id))
+        except:
+            print("Failed adding command in dbshell.add_stream_cmd")
+            cmd_id = -1  # return a negative value so that the script knows that the query failed
+
+        return cmd_id
+
+    def add_command_detail(self, cmd_id, detail_type, detail_seq):
+        detail_id = 0
+        try:
+            sql = """SELECT * FROM meekbot.addCmdDtl({}, '{}', {})"""
+            print(sql.format(cmd_id, detail_type.upper(), detail_seq))
+
+            with self.get_cursor() as cursor:
+                cursor.execute(sql.format(cmd_id, detail_type.upper(), detail_seq))
+                detail_id = cursor.fetchone()[0]
+                print('Detail ID = ' + str(detail_id))
+        except:
+            print("Failed adding detail in dbshell.add_command_detail")
+            detail_id = -1  # return a negative value so that the script knows that the query failed
+
+        return detail_id
+
+

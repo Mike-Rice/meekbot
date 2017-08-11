@@ -43,6 +43,16 @@ class cmd(object):
         print(self.command_vars)
 
     # Function to build output string
+    def build_output(self, message):
+        # TODO: Split out variables and replace them in the message
+
+        # TODO: Split out command details, i.e. counters/multi values
+        if len(self.command_vars) > 0:
+            print('Review command details')
+        output_string = ''
+        output_string = self.command_text
+
+        return output_string
 
     # Function to increase count and store it int the database
 

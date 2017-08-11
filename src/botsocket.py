@@ -1,9 +1,7 @@
 import socket
-# import string
 import urllib.request
 import json
-# import time, _thread
-from time import sleep # , time
+from time import sleep
 
 # meekbot files/classes
 import viewer
@@ -141,6 +139,8 @@ class twitchStream(object):
         """
         keep_running_flg = True
 
+        split_msg = message.split(" ")
+
         # if user not in viewerlist initiate them
         if user not in self.viewerlist:
             self._init_viewer(user, "viewer")
@@ -153,29 +153,16 @@ class twitchStream(object):
                 for n in range(0, len(taggedUser)):
                     if taggedUser[n] != user:
                         self.viewerlist[user].tag_cnt += 1
-                
-        
-        # TODO - ADD MEEKBOT SPECIFIC COMMANDS FOR ADDING/REMOVING COMMANDS
-        if "!mb addcmd" == message[0:10].lower():
-            print('ADD A COMMAND BRO')
-        elif "!mb delcmd" == message[0:10].lower():
-            print('DELETE COMMAND BRO')
-        elif "!mb editcmd" == message[0:11].lower():
-            print('EDIT A COMMAND BRO')
-        
-        # TODO - CHANGE THIS TO EVALUATE COMMANDS FROM THE DATABASE
-        if "You Suck" in message:
-            self.send_message("No, you suck.")
 
-        elif "taquitos" in message:
-            self.send_message("Taquitos are a delicious after pushup snack")
+        # !mb will be a reserved command for mods to handle meekbot work
+        if split_msg[0] == '!mb':
+            self._mb_command(user, split_msg)
+        # TODO: Add Viewer level for permission evaluation
+        elif split_msg[0] in self.command_list:
+            self.send_message(self.command_list[split_msg[0]].build_output(message))
 
-        # CHANGE THIS LATER TO PULL CHANNEL OWNER
-        elif (
-               (   
-                   self.getUserLevel(user) == "mod" 
-                or user == "meekus1212"
-               ) 
+        # THIS IS ONLY DURING DESIGN/BUILD
+        if (user == "meekus1212"
               and "Exit" in message
               ):
             # self.send_message("That's all folks!")
@@ -300,7 +287,6 @@ class twitchStream(object):
         
         return userLevel
 
-
     def _get_command_list(self):
         """ Gets a list of commands for the stream and places them in a list of command objects.  Each command object
             contains the details of the command in the form of variables/counters/etc...
@@ -322,6 +308,7 @@ class twitchStream(object):
             detail_text = temp_list[8]
             detail_num = temp_list[9]
             detail_type = temp_list[10]
+            detail_id = temp_list[11]
 
             # if the command is already in the list get the new details added
             if command_name not in self.command_list:
@@ -334,6 +321,7 @@ class twitchStream(object):
 
             #start appending details
             detail_list = []
+            detail_list.append(detail_id)
             detail_list.append(detail_name)
             detail_list.append(detail_text)
             detail_list.append(detail_num)
@@ -342,3 +330,71 @@ class twitchStream(object):
             self.command_list[command_name].command_vars.append(detail_list)
 
             print(self.command_list[command_name].print())
+
+    def _mb_command(self, user, cmd_msg):
+
+        cooldown_val = 0
+        cmd_priv = 'viewer'
+        cmd_txt = ''
+        cmd_name = cmd_msg[2]
+        cmd_details = []
+        var_ptr = 0
+
+        param_loop_flg = True
+        msg_ptr = 3  # default this to 2 so it skips '!mb', command,  and the command name
+
+        while param_loop_flg:
+            if cmd_msg[msg_ptr][0] == '-':
+                if cmd_msg[msg_ptr][:3] == '-cd':
+                    cooldown_val = cmd_msg[msg_ptr][4:]
+                elif cmd_msg[msg_ptr][:3] == '-ul':
+                    cmd_priv = cmd_msg[msg_ptr][4:]
+
+                msg_ptr += 1
+            else:
+                param_loop_flg = False
+
+        # Build the command message.
+        cmd_txt = " ".join(cmd_msg[msg_ptr:])
+
+        # Parses the command text looking for variables.  For example $[var] and $[count]
+        while var_ptr >= 0:
+            var_ptr = cmd_txt.find('$[', var_ptr + 2)
+            if(var_ptr >= 0):
+                var_end_ptr = cmd_txt.find(']', var_ptr)
+                if var_end_ptr >= 0:
+                    detail_type = cmd_txt[var_ptr+2:var_end_ptr]
+                    cmd_details.append(detail_type)
+
+        print('cmd_details:')
+        print(cmd_details)
+
+        print('cmd_text = ' + cmd_txt)
+        # look through mb command list to see where it is
+        if cmd_msg[1] == 'addcmd':
+            cmd_id = self.stream_db.add_stream_cmd(self.stream_id, cmd_priv, cooldown_val, cmd_name, cmd_txt)
+            if cmd_id == -1:
+                self.send_message('The command, ' + cmd_name + ', already exists.')
+            else:
+                # Add command to the cached command list
+                self.command_list[cmd_name] = stream_command.cmd(self.stream_id, cmd_name, cmd_id)
+                self.command_list[cmd_name].command_text = cmd_txt
+                self.command_list[cmd_name].command_type = 'TEXTOUTPUT'
+                self.command_list[cmd_name].cooldown_dur = cooldown_val
+                self.command_list[cmd_name].cooldown_dur_unit = 'sec'
+                self.command_list[cmd_name].command_req_permissions = cmd_priv
+
+
+                # Add command details to the database and the command object
+                for i in cmd_details:
+                    detail_id = self.stream_db.add_command_detail(cmd_id, cmd_details[i].upper(), i+1)
+
+                    detail_list = []
+                    detail_list.append(detail_id)
+                    detail_list.append('TEMP')
+                    detail_list.append('')
+                    detail_list.append(0)
+                    detail_list.append(cmd_details[i].upper())
+
+                    self.command_list[cmd_name].command_vars.append(detail_list)
+
