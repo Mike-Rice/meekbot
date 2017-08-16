@@ -333,12 +333,27 @@ class twitchStream(object):
 
     def _mb_command(self, user, cmd_msg):
 
-        cooldown_val = 0
-        cmd_priv = 'viewer'
         cmd_txt = ''
         cmd_name = cmd_msg[2]
-        cmd_details = []
-        var_ptr = 0
+
+        # look through mb command list to see where it is
+        if cmd_msg[1] == 'addcmd':
+            cmd_params = self._get_cmd_params(cmd_msg)
+            # Build the command message.
+            cmd_txt = " ".join(cmd_msg[cmd_params['ptr']:])
+            print('cmd_text = ' + cmd_txt)
+            self._mb_add_command(user, cmd_params['cmd_priv'], cmd_params['cooldown'], cmd_name, cmd_txt)
+
+        elif cmd_msg[1] == 'setvar':
+            print('SET THE VAR')
+
+    def _get_cmd_params(self, cmd_msg):
+
+        cmd_params = {}
+        # Set default values in case they aren't entered into the command
+        cmd_params['cooldown'] = 0
+        cmd_params['cmd_priv'] = 'viewer'
+        cmd_params['type'] = "TEXTOUTPUT"
 
         param_loop_flg = True
         msg_ptr = 3  # default this to 2 so it skips '!mb', command,  and the command name
@@ -346,16 +361,23 @@ class twitchStream(object):
         while param_loop_flg:
             if cmd_msg[msg_ptr][0] == '-':
                 if cmd_msg[msg_ptr][:3] == '-cd':
-                    cooldown_val = cmd_msg[msg_ptr][4:]
+                    cmd_params['cooldown'] = cmd_msg[msg_ptr][4:]
                 elif cmd_msg[msg_ptr][:3] == '-ul':
-                    cmd_priv = cmd_msg[msg_ptr][4:]
+                    cmd_params['cmd_priv'] = cmd_msg[msg_ptr][4:]
+                elif cmd_msg[msg_ptr][:5] == '-type':
+                    cmd_params['type'] = cmd_msg[msg_ptr][6:]
 
                 msg_ptr += 1
             else:
                 param_loop_flg = False
 
-        # Build the command message.
-        cmd_txt = " ".join(cmd_msg[msg_ptr:])
+        cmd_params['ptr'] = msg_ptr # used to reference and capture cmd_txt from _mb_command
+
+        return cmd_params
+
+    def _get_cmd_details(self, cmd_txt):
+        var_ptr = 0
+        cmd_details = []
 
         # Parses the command text looking for variables.  For example $[var] and $[count]
         while var_ptr >= 0:
@@ -366,35 +388,38 @@ class twitchStream(object):
                     detail_type = cmd_txt[var_ptr+2:var_end_ptr]
                     cmd_details.append(detail_type)
 
-        print('cmd_details:')
-        print(cmd_details)
+        return cmd_details
 
-        print('cmd_text = ' + cmd_txt)
-        # look through mb command list to see where it is
-        if cmd_msg[1] == 'addcmd':
-            cmd_id = self.stream_db.add_stream_cmd(self.stream_id, cmd_priv, cooldown_val, cmd_name, cmd_txt)
-            if cmd_id == -1:
-                self.send_message('The command, ' + cmd_name + ', already exists.')
-            else:
-                # Add command to the cached command list
-                self.command_list[cmd_name] = stream_command.cmd(self.stream_id, cmd_name, cmd_id)
-                self.command_list[cmd_name].command_text = cmd_txt
-                self.command_list[cmd_name].command_type = 'TEXTOUTPUT'
-                self.command_list[cmd_name].cooldown_dur = cooldown_val
-                self.command_list[cmd_name].cooldown_dur_unit = 'sec'
-                self.command_list[cmd_name].command_req_permissions = cmd_priv
+    def _mb_add_command(self, user, cmd_priv, cooldown_val, cmd_name, cmd_txt):
 
+        #TODO - Update to pull in "cmd_params" dictionary instead of specific variables
 
-                # Add command details to the database and the command object
-                for i in cmd_details:
-                    detail_id = self.stream_db.add_command_detail(cmd_id, cmd_details[i].upper(), i+1)
+        cmd_details = self._get_cmd_details(cmd_txt)
 
-                    detail_list = []
-                    detail_list.append(detail_id)
-                    detail_list.append('TEMP')
-                    detail_list.append('')
-                    detail_list.append(0)
-                    detail_list.append(cmd_details[i].upper())
+        cmd_id = self.stream_db.add_stream_cmd(self.stream_id, cmd_priv, cooldown_val, cmd_name, cmd_txt)
+        if cmd_id == -1:
+            self.send_message('The command, ' + cmd_name + ', already exists.')
+        else:
+            # Add command to the cached command list
+            self.command_list[cmd_name] = stream_command.cmd(self.stream_id, cmd_name, cmd_id)
+            self.command_list[cmd_name].command_text = cmd_txt
+            self.command_list[cmd_name].command_type = 'TEXTOUTPUT'
+            self.command_list[cmd_name].cooldown_dur = cooldown_val
+            self.command_list[cmd_name].cooldown_dur_unit = 'sec'
+            self.command_list[cmd_name].command_req_permissions = cmd_priv
 
-                    self.command_list[cmd_name].command_vars.append(detail_list)
+            # Add command details to the database and the command object
+            for i, val in enumerate(cmd_details):
+                detail_id = self.stream_db.add_command_detail(cmd_id, val.upper(), i + 1)
+
+                detail_list = []
+                detail_list.append(detail_id)
+                detail_list.append('TEMP')
+                detail_list.append('')
+                detail_list.append(0)
+                detail_list.append(cmd_details[i].upper())
+
+                self.command_list[cmd_name].command_vars.append(detail_list)
+
+            self.send_message('@' + user + ',the command ' + cmd_name + ' has been added!')
 

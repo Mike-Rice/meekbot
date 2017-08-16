@@ -243,10 +243,10 @@ class database(object):
         cmd_id = 0
         try:
             sql = """SELECT * FROM meekbot.addStreamCmd({}, '{}', {}, '{}', '{}', '{}')"""
-            print(sql.format(stream_id, prm_lvl, cooldown, cmd_name.lower(), cmd_txt))
+            print(sql.format(stream_id, prm_lvl, cooldown, cmd_name.lower(), cmd_txt, 'TEXTOUTPUT'))
 
             with self.get_cursor() as cursor:
-                cursor.execute(sql.format(stream_id, prm_lvl, cooldown, cmd_name.lower(), cmd_txt, 'TEXTOUTPUT'))
+                cursor.execute(sql.format(stream_id, prm_lvl.upper(), cooldown, cmd_name.lower(), cmd_txt, 'TEXTOUTPUT'))
                 cmd_id = cursor.fetchone()[0]
                 print('Command ID = ' + str(cmd_id))
         except:

@@ -6,6 +6,7 @@ DECLARE
  cmdID bigint := 0;
  second_cd bigint := 0;
  cmd_type_cd bigint := 0;
+ active_flag boolean := TRUE;
 BEGIN
 
   --Get command type code
@@ -33,14 +34,13 @@ WHERE code_set = 3
    AND display_key = 'SECOND'
    AND active_ind = TRUE;
 
+  --Get Command ID
+  --Don't care about active indicator because if it exists we want to update the same row
   SELECT
     commands.command_id INTO cmdID
   FROM meekbot.commands
   WHERE stream_id = streamID
-    AND command_name = cmd_name
-    AND active_ind = TRUE;
-
- -- ADD LOGIC TO GET INACTIVE COMMANDS OF THE SAME NAME IF THEY EXIST
+    AND command_name = cmd_name;
 
  --Add logic to see if command already exists and return a negative value if so
  IF cmdID IS NULL THEN
@@ -55,7 +55,25 @@ WHERE code_set = 3
    VALUES (streamID, relationship_cd, cooldown, second_cd, cmd_name, cmd_text, cmd_type_cd, now())
    RETURNING commands.command_id INTO cmdID;
  ELSE
-   cmdID := -1; --Set to negative as a flag that the command was found
+
+   --CHECK TO SEE IF COMMAND IS ACTIVE.  IF SO SET ID to -1 TO FLAG IT WAS FOUND.  OTHERWISE UPDATE COMMAND
+   SELECT commands.active_ind INTO active_flag
+   FROM meekbot.commands
+   WHERE command_id = cmdID;
+
+   IF active_flag IS TRUE THEN
+    cmdID := -1; --Set to negative as a flag that the command was found
+   ELSE
+    UPDATE meekbot.commands SET stream_reltn_cd = relationship_cd
+                               ,updt_dt_tm = now()
+                               ,cooldown_dur= cooldown
+                               ,cooldown_dur_unit_cd = second_cd
+                               ,command_string = cmd_text
+                               ,command_type_cd = cmd_type_cd
+                               ,active_ind = TRUE
+    WHERE command_id = cmdID;
+   END IF;
+
  END IF;
  -- logic
  RETURN cmdID;
