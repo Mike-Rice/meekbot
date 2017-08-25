@@ -204,10 +204,11 @@ class database(object):
                     ,commands.cooldown_dur
                     ,cv1.description
                     ,cv2.description
+                    ,command_detail.seq
                     ,command_detail.detail_name
                     ,command_detail.detail_text
                     ,command_detail.detail_num
-                    ,cv3.description
+                    ,cv3.display_key
                     ,command_detail.command_detail_id
                 FROM meekbot.commands
                     join meekbot.code_value cv on cv.code_value = meekbot.commands.command_type_cd
@@ -271,4 +272,49 @@ class database(object):
 
         return detail_id
 
+    def set_command_var(self, cmd_id, seq, detail_type, text_val, num_val):
+        query_flg = False
+        try:
+            sql = """SELECT * FROM meekbot.updatecmddtl({}, '{}', '{}', {}, {})"""
+            print(sql.format(cmd_id, detail_type.upper(), text_val, num_val, seq))
 
+            with self.get_cursor() as cursor:
+                cursor.execute(sql.format(cmd_id, detail_type.upper(), text_val, num_val, seq))
+                query_flg = cursor.fetchone()[0]
+
+        except:
+            print("Failed adding detail in dbshell.set_command_var")
+            query_flg = False  # return a negative value so that the script knows that the query failed
+
+        return query_flg
+
+    def inactivate_command(self, cmd_id):
+
+        try:
+            sql = """UPDATE meekbot.commands SET updt_dt_tm = now()
+                                                      , active_ind = FALSE
+                     WHERE command_id = {};"""
+            # print(sql.format(streamName,'now()'))# value_list)
+
+            with self.get_cursor() as cursor:
+                cursor.execute(sql.format(cmd_id))
+                success_flg = True
+        except:
+            print("Failed inactivating command in dbshell.inactivate_command")
+            success_flg = False
+
+        if success_flg == True:
+            try:
+                sql = """UPDATE meekbot.command_detail SET updt_dt_tm = now()
+                                                          , active_ind = FALSE
+                         WHERE command_id = {};"""
+                # print(sql.format(streamName,'now()'))# value_list)
+
+                with self.get_cursor() as cursor:
+                    cursor.execute(sql.format(cmd_id))
+                    success_flg = True
+            except:
+                print("Failed inactivating command details in dbshell.inactivate_command")
+                success_flg = False
+
+        return success_flg

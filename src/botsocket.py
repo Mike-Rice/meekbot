@@ -73,7 +73,7 @@ class twitchStream(object):
                 print(line)
                 loading_flg = self._loading_complete(line)
                 
-        # self.send_message("Did someone say bot?.")
+        # self.send_message("Hi @Tazman_85 .")
             
     def _loading_complete(self,line):
         """ Returns whether or not the socket has received the last bit of text
@@ -281,9 +281,9 @@ class twitchStream(object):
     # returns the user's view level (mod/staff/admin/viewer/etc...)
     def getUserLevel(self,user):    
         if user in self.viewerlist:
-            userLevel = self.viewerlist[user].view_lvl#['viewlvl']
+            userLevel = self.viewerlist[user].view_lvl
         else:
-            userLevel = "viewer" # if user isn't found send back viewer since it has the least privs
+            userLevel = "viewer"  # if user isn't found send back viewer since it has the least privs
         
         return userLevel
 
@@ -304,11 +304,12 @@ class twitchStream(object):
             command_cooldown_dur = temp_list[4]
             command_cooldown_dur_unit = temp_list[5]
             command_reltn_lvl = temp_list[6]
-            detail_name = temp_list[7]
-            detail_text = temp_list[8]
-            detail_num = temp_list[9]
-            detail_type = temp_list[10]
-            detail_id = temp_list[11]
+            detail_seq = temp_list[7]
+            detail_name = temp_list[8]
+            detail_text = temp_list[9]
+            detail_num = temp_list[10]
+            detail_type = temp_list[11]
+            detail_id = temp_list[12]
 
             # if the command is already in the list get the new details added
             if command_name not in self.command_list:
@@ -319,21 +320,16 @@ class twitchStream(object):
                 self.command_list[command_name].cooldown_dur_unit = command_cooldown_dur_unit
                 self.command_list[command_name].command_req_permissions = command_reltn_lvl
 
-            #start appending details
-            detail_list = []
-            detail_list.append(detail_id)
-            detail_list.append(detail_name)
-            detail_list.append(detail_text)
-            detail_list.append(detail_num)
-            detail_list.append(detail_type)
-
-            self.command_list[command_name].command_vars.append(detail_list)
-
-            print(self.command_list[command_name].print())
+            if detail_seq is None:
+                self.command_list[command_name].add_detail(detail_seq
+                                                           , detail_id
+                                                           , detail_name
+                                                           , detail_text
+                                                           , detail_num
+                                                           , detail_type)
 
     def _mb_command(self, user, cmd_msg):
 
-        cmd_txt = ''
         cmd_name = cmd_msg[2]
 
         # look through mb command list to see where it is
@@ -345,7 +341,58 @@ class twitchStream(object):
             self._mb_add_command(user, cmd_params['cmd_priv'], cmd_params['cooldown'], cmd_name, cmd_txt)
 
         elif cmd_msg[1] == 'setvar':
-            print('SET THE VAR')
+            cmd_txt = " ".join(cmd_msg[3:])
+            self._mb_set_var(cmd_name, cmd_txt)
+
+        elif cmd_msg[1] == 'delcmd':
+            print('Delete command, ' + cmd_name)
+            del_success = self.stream_db.inactivate_command(self.command_list[cmd_name].command_id)
+            if del_success:
+                del(self.command_list[cmd_name])
+                self.send_message('@' + user + ', Command ' + cmd_name + ' has been successfully deleted.')
+            else:
+                self.send_message('@' + user + ', Unable to delete command ' + cmd_name)
+
+        elif cmd_msg[1] == 'editcmd':
+            cmd_txt = " ".join(cmd_msg[3:])
+            print('Edit command, ' + cmd_name + ', new text = ' + cmd_txt)
+
+    def _mb_set_var(self, cmd_name, cmd_txt):
+        # Parses the command text looking for variables.  For example $[var] and $[count]
+        var_ptr = cmd_txt.find('$[', 0)
+        while var_ptr >= 0:
+            var_end_ptr = cmd_txt.find(']', var_ptr)
+            if var_end_ptr >= 0:
+                seq = int(cmd_txt[var_ptr+2:var_end_ptr])
+                var_ptr = cmd_txt.find('$[', var_ptr + 2)
+
+                if var_ptr > 0:
+                    value = cmd_txt[var_end_ptr+1:var_ptr]
+                else:
+                    value = cmd_txt[var_end_ptr + 1:]
+
+                # Get detail type to determine what type of value is being set
+                dtl_type = self.command_list[cmd_name].get_detail_type(seq)
+                text_val = ''
+                num_val = 0.0
+                if dtl_type.upper() == 'TEXT':
+                    self.command_list[cmd_name].set_detail_text(seq, value)
+                    text_val = value
+                elif dtl_type.upper() == 'NUM':
+                    self.command_list[cmd_name].set_detail_num(seq, value)
+                    num_val = float(value)
+
+                dtl_added = self.stream_db.set_command_var(self.command_list[cmd_name].command_id
+                                               , seq
+                                               , self.command_list[cmd_name].get_detail_type(seq).upper()
+                                               , text_val
+                                               , num_val)
+                if dtl_added:
+                    self.send_message('Detail Updated')
+                else:
+                    self.send_message('Detail failed to update')
+
+                #TODO - Else throw error
 
     def _get_cmd_params(self, cmd_msg):
 
@@ -387,12 +434,14 @@ class twitchStream(object):
                 if var_end_ptr >= 0:
                     detail_type = cmd_txt[var_ptr+2:var_end_ptr]
                     cmd_details.append(detail_type)
+                #TODO - Else throw error
 
         return cmd_details
 
     def _mb_add_command(self, user, cmd_priv, cooldown_val, cmd_name, cmd_txt):
 
         #TODO - Update to pull in "cmd_params" dictionary instead of specific variables
+        #TODO - Will allow using -type and setting the detail type
 
         cmd_details = self._get_cmd_details(cmd_txt)
 
@@ -412,14 +461,12 @@ class twitchStream(object):
             for i, val in enumerate(cmd_details):
                 detail_id = self.stream_db.add_command_detail(cmd_id, val.upper(), i + 1)
 
-                detail_list = []
-                detail_list.append(detail_id)
-                detail_list.append('TEMP')
-                detail_list.append('')
-                detail_list.append(0)
-                detail_list.append(cmd_details[i].upper())
-
-                self.command_list[cmd_name].command_vars.append(detail_list)
+                self.command_list[cmd_name].add_detail(i+1
+                                                       , detail_id
+                                                       , 'TEMP'
+                                                       , ''
+                                                       , 0
+                                                       , val.upper())
 
             self.send_message('@' + user + ',the command ' + cmd_name + ' has been added!')
 

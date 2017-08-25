@@ -1,7 +1,7 @@
 from botsocket import twitchStream
 import time
 import _thread
-from time import sleep
+# from time import sleep
 import logging
 
 
@@ -9,14 +9,14 @@ def main():
     """Primary function to execute meekbot"""    
     
     # TODO: Adjust once a web framework is setup to run the bot script
-    streamName = input("Enter the stream name you wish to join: ")
+    streamName = 'meekus1212'  # input("Enter the stream name you wish to join: ")
 
     #set logging to include date/time and message
     logging.basicConfig(filename='exceptions.log',level=logging.DEBUG)
     logging.basicConfig(format='%(asctime)s %(message)s')
     logging.info("Started")
     
-    readbuffer = "" #instantiate the buffer
+    readbuffer = ""  # instantiate the buffer
     
     streamCon = twitchStream(streamName)
     streamCon.open_socket()
@@ -24,7 +24,7 @@ def main():
     # populate viewer list into dictionary
     _thread.start_new_thread(streamCon.thread_fill_viewerList, ())
     
-    runFlag = True #escape variable to kill the bot at any time
+    runFlag = True  # escape variable to kill the bot at any time
     
     while runFlag:
         response = streamCon.stream_socket.recv(1024).decode("utf-8")
