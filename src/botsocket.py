@@ -338,14 +338,13 @@ class twitchStream(object):
             # Build the command message.
             cmd_txt = " ".join(cmd_msg[cmd_params['ptr']:])
             print('cmd_text = ' + cmd_txt)
-            self._mb_add_command(user, cmd_params['cmd_priv'], cmd_params['cooldown'], cmd_name, cmd_txt)
+            self._mb_set_command(user, cmd_params['cmd_priv'], cmd_params['cooldown'], cmd_name, cmd_txt, 'Add')
 
         elif cmd_msg[1] == 'setvar':
             cmd_txt = " ".join(cmd_msg[3:])
             self._mb_set_var(cmd_name, cmd_txt)
 
         elif cmd_msg[1] == 'delcmd':
-            print('Delete command, ' + cmd_name)
             del_success = self.stream_db.inactivate_command(self.command_list[cmd_name].command_id)
             if del_success:
                 del(self.command_list[cmd_name])
@@ -354,7 +353,11 @@ class twitchStream(object):
                 self.send_message('@' + user + ', Unable to delete command ' + cmd_name)
 
         elif cmd_msg[1] == 'editcmd':
-            cmd_txt = " ".join(cmd_msg[3:])
+            cmd_params = self._get_cmd_params(cmd_msg)
+            # Build the command message.
+            cmd_txt = " ".join(cmd_msg[cmd_params['ptr']:])
+            print('cmd_text = ' + cmd_txt)
+            self._mb_set_command(user, cmd_params['cmd_priv'], cmd_params['cooldown'], cmd_name, cmd_txt, 'Edit')
             print('Edit command, ' + cmd_name + ', new text = ' + cmd_txt)
 
     def _mb_set_var(self, cmd_name, cmd_txt):
@@ -438,19 +441,21 @@ class twitchStream(object):
 
         return cmd_details
 
-    def _mb_add_command(self, user, cmd_priv, cooldown_val, cmd_name, cmd_txt):
+    def _mb_set_command(self, user, cmd_priv, cooldown_val, cmd_name, cmd_txt, call_type):
 
         #TODO - Update to pull in "cmd_params" dictionary instead of specific variables
         #TODO - Will allow using -type and setting the detail type
 
         cmd_details = self._get_cmd_details(cmd_txt)
 
-        cmd_id = self.stream_db.add_stream_cmd(self.stream_id, cmd_priv, cooldown_val, cmd_name, cmd_txt)
-        if cmd_id == -1:
+        cmd_id = self.stream_db.set_stream_cmd(self.stream_id, cmd_priv, cooldown_val, cmd_name, cmd_txt, call_type)
+
+        if cmd_id == -1 and call_type == 'Add':
             self.send_message('The command, ' + cmd_name + ', already exists.')
         else:
             # Add command to the cached command list
-            self.command_list[cmd_name] = stream_command.cmd(self.stream_id, cmd_name, cmd_id)
+            if call_type == 'Add':
+                self.command_list[cmd_name] = stream_command.cmd(self.stream_id, cmd_name, cmd_id)
             self.command_list[cmd_name].command_text = cmd_txt
             self.command_list[cmd_name].command_type = 'TEXTOUTPUT'
             self.command_list[cmd_name].cooldown_dur = cooldown_val
@@ -467,6 +472,11 @@ class twitchStream(object):
                                                        , ''
                                                        , 0
                                                        , val.upper())
+            # TODO - Add in error checking
 
-            self.send_message('@' + user + ',the command ' + cmd_name + ' has been added!')
-
+            if call_type == 'Add':
+                self.send_message('@' + user + ',the command ' + cmd_name + ' has been added!')
+            elif call_type == 'Edit':
+                success = self.stream_db.inactivate_command_dtls(cmd_id, len(cmd_details))
+                if success:
+                    self.send_message('@' + user + ',the command ' + cmd_name + ' has been updated!')

@@ -239,15 +239,21 @@ class database(object):
 
 
 
-    def add_stream_cmd(self, stream_id, prm_lvl, cooldown, cmd_name, cmd_txt):
+    def set_stream_cmd(self, stream_id, prm_lvl, cooldown, cmd_name, cmd_txt, call_type):
 
         cmd_id = 0
         try:
-            sql = """SELECT * FROM meekbot.addStreamCmd({}, '{}', {}, '{}', '{}', '{}')"""
-            print(sql.format(stream_id, prm_lvl, cooldown, cmd_name.lower(), cmd_txt, 'TEXTOUTPUT'))
+            sql = """SELECT * FROM meekbot.setStreamCmd({}, '{}', {}, '{}', '{}', '{}', '{}')"""
+            print(sql.format(stream_id, prm_lvl, cooldown, cmd_name.lower(), cmd_txt, 'TEXTOUTPUT', call_type))
 
             with self.get_cursor() as cursor:
-                cursor.execute(sql.format(stream_id, prm_lvl.upper(), cooldown, cmd_name.lower(), cmd_txt, 'TEXTOUTPUT'))
+                cursor.execute(sql.format(stream_id
+                                          , prm_lvl.upper()
+                                          , cooldown
+                                          , cmd_name.lower()
+                                          , cmd_txt
+                                          , 'TEXTOUTPUT'
+                                          ,call_type))
                 cmd_id = cursor.fetchone()[0]
                 print('Command ID = ' + str(cmd_id))
         except:
@@ -316,5 +322,24 @@ class database(object):
             except:
                 print("Failed inactivating command details in dbshell.inactivate_command")
                 success_flg = False
+
+        return success_flg
+
+    def inactivate_command_dtls(self, cmd_id, max_seq):
+
+
+        try:
+            sql = """UPDATE meekbot.command_detail SET updt_dt_tm = now()
+                                                      , active_ind = FALSE
+                     WHERE command_id = {}
+                       AND seq > {};"""
+            # print(sql.format(streamName,'now()'))# value_list)
+
+            with self.get_cursor() as cursor:
+                cursor.execute(sql.format(cmd_id, max_seq))
+                success_flg = True
+        except:
+            print("Failed inactivating command details in dbshell.inactivate_command_dtls")
+            success_flg = False
 
         return success_flg
