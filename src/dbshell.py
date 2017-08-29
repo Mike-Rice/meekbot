@@ -219,11 +219,13 @@ class database(object):
                 
                 WHERE commands.stream_id = {}
                   AND commands.active_ind = TRUE
+                  AND command_detail.active_ind = TRUE
                   AND cv.active_ind = TRUE
                   AND cv1.active_ind = TRUE
                   AND cv2.active_ind = TRUE
                   
-                ORDER BY command_detail.seq;"""
+                ORDER BY commands.command_id
+                        ,command_detail.seq;"""
 
             with self.get_cursor() as cursor:
                 cursor.execute(sql.format(stream_id))

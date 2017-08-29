@@ -1,5 +1,5 @@
-CREATE OR REPLACE FUNCTION meekbot.addStreamCmd(streamID bigint, reltn text, cooldown int, cmd_name text, cmd_text text
-                                                ,cmd_type text)
+CREATE OR REPLACE FUNCTION meekbot.setStreamCmd(streamID bigint, reltn text, cooldown int, cmd_name text, cmd_text text
+                                                ,cmd_type text, call_type text)
 RETURNS bigint AS $CMD$
 DECLARE
  relationship_cd bigint := 0;
@@ -61,7 +61,8 @@ WHERE code_set = 3
    FROM meekbot.commands
    WHERE command_id = cmdID;
 
-   IF active_flag IS TRUE THEN
+   -- Add check for the add/edit indicator in parameteres
+   IF ((active_flag IS TRUE) AND (call_type = 'Add')) THEN
     cmdID := -1; --Set to negative as a flag that the command was found
    ELSE
     UPDATE meekbot.commands SET stream_reltn_cd = relationship_cd

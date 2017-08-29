@@ -159,7 +159,7 @@ class twitchStream(object):
             self._mb_command(user, split_msg)
         # TODO: Add Viewer level for permission evaluation
         elif split_msg[0] in self.command_list:
-            self.send_message(self.command_list[split_msg[0]].build_output(message))
+            self.send_message(self.command_list[split_msg[0]].build_output(split_msg[1:]))
 
         # THIS IS ONLY DURING DESIGN/BUILD
         if (user == "meekus1212"
@@ -294,8 +294,8 @@ class twitchStream(object):
         :return: Nothing
         """
         cmd_tuple = self.stream_db.get_stream_commands(self.stream_id)
-
         for i in range(len(cmd_tuple)):
+            print(cmd_tuple[i])
             temp_list = list(cmd_tuple[i])
             command_id = temp_list[0]
             command_name = temp_list[1]
@@ -320,13 +320,16 @@ class twitchStream(object):
                 self.command_list[command_name].cooldown_dur_unit = command_cooldown_dur_unit
                 self.command_list[command_name].command_req_permissions = command_reltn_lvl
 
-            if detail_seq is None:
+            if detail_seq is not None:
                 self.command_list[command_name].add_detail(detail_seq
                                                            , detail_id
                                                            , detail_name
                                                            , detail_text
                                                            , detail_num
                                                            , detail_type)
+                print('COMMAND NAME = ' + command_name)
+                print('DETAIL SEQ = ' + str(detail_seq))
+                self.command_list[command_name].print()
 
     def _mb_command(self, user, cmd_msg):
 
