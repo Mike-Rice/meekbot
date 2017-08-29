@@ -79,7 +79,9 @@ class cmd(object):
         # TODO: Split out variables and replace them in the message
         split_text = self.command_text.split(" ")
         var_cnt = 1  # The current sequence when we need to replace a variable
-
+        input_params = message.split(" ")
+        param_cnt = 0 # Iterate through input parameters when command is called
+        print(input_params)
         for ptr, val in enumerate(split_text):
             if split_text[ptr][:2] == '$[':
                 if self.get_detail_type(var_cnt).upper() == 'TEXT':
@@ -89,11 +91,9 @@ class cmd(object):
                         or (self.get_detail_type(var_cnt).upper() == 'COUNT')):
                     split_text[ptr] = str(self.get_detail_num(var_cnt))
                     var_cnt += 1
-
-
-        # TODO: Split out command details, i.e. counters/multi values
-        if len(self.command_vars) > 0:
-            print('Review command details')
+            elif split_text[ptr][:2] == '$(':
+                split_text[ptr] = input_params[param_cnt]
+                param_cnt += 1
 
         output_string = " ".join(split_text)
 

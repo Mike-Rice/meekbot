@@ -159,7 +159,7 @@ class twitchStream(object):
             self._mb_command(user, split_msg)
         # TODO: Add Viewer level for permission evaluation
         elif split_msg[0] in self.command_list:
-            self.send_message(self.command_list[split_msg[0]].build_output(split_msg[1:]))
+            self.send_message(self.command_list[split_msg[0]].build_output(" ".join(split_msg[1:])))
 
         # THIS IS ONLY DURING DESIGN/BUILD
         if (user == "meekus1212"
