@@ -31,6 +31,7 @@ class twitchStream(object):
         self.stream_socket = socket.socket()
         self.viewerlist = {}
         self.command_list = {}
+        self.stream_reltn_matrix = {}
         self.last_active_list = []
         
         # connects to the database to grab the streamer stream id or enter
@@ -43,6 +44,8 @@ class twitchStream(object):
             self.stream_id = self.stream_db.add_stream(self.stream_name)
 
         self._get_command_list()
+
+        self.stream_reltn_matrix = self.stream_db.get_stream_reltn_matrix()
 
     def open_socket(self):
         """ Opens connection to the channel given to the class on init"""
@@ -157,9 +160,14 @@ class twitchStream(object):
         # !mb will be a reserved command for mods to handle meekbot work
         if split_msg[0] == '!mb':
             self._mb_command(user, split_msg)
-        # TODO: Add Viewer level for permission evaluation
+
         elif split_msg[0] in self.command_list:
-            self.send_message(self.command_list[split_msg[0]].build_output(" ".join(split_msg[1:])))
+
+            cmd_req_reltn = self.stream_reltn_matrix[self.command_list[split_msg[0]].command_req_permissions.upper()]
+            user_req_reltn = self.stream_reltn_matrix[self.viewerlist[user].view_lvl.upper()]
+
+            if user_req_reltn >= cmd_req_reltn:
+                self.send_message(self.command_list[split_msg[0]].build_output(" ".join(split_msg[1:])))
 
         # THIS IS ONLY DURING DESIGN/BUILD
         if (user == "meekus1212"

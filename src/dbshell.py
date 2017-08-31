@@ -203,7 +203,7 @@ class database(object):
                     ,cv.description
                     ,commands.cooldown_dur
                     ,cv1.description
-                    ,cv2.description
+                    ,cv2.display_key
                     ,command_detail.seq
                     ,command_detail.detail_name
                     ,command_detail.detail_text
@@ -345,3 +345,23 @@ class database(object):
             success_flg = False
 
         return success_flg
+
+    def get_stream_reltn_matrix(self):
+        stream_reltn_matrix = {}
+
+        try:
+            sql = """SELECT display_key, definition FROM meekbot.code_value WHERE code_set = 1 AND active_ind = TRUE;"""
+
+            with self.get_cursor() as cursor:
+                cursor.execute(sql)
+                if cursor.rowcount > 0:
+                    cnt = 0
+                    while cnt < cursor.rowcount:
+                        record = cursor.fetchone()
+                        stream_reltn_matrix[record[0]] = int(record[1])
+                        cnt += 1
+
+        except:
+            print("Failed inactivating command details in dbshell.inactivate_command_dtls")
+
+        return stream_reltn_matrix

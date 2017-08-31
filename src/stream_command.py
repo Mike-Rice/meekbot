@@ -73,15 +73,19 @@ class cmd(object):
     def set_detail_type(self, seq, val):
         self.command_vars[seq]['type'] = val.upper()
 
-
     # Function to build output string
     def build_output(self, message):
         # TODO: Split out variables and replace them in the message
         split_text = self.command_text.split(" ")
         var_cnt = 1  # The current sequence when we need to replace a variable
-        input_params = message.split(" ")
-        param_cnt = 0 # Iterate through input parameters when command is called
-        print(input_params)
+
+        if len(message.strip()) == 0:
+            no_params = True
+        else:
+            input_params = message.split(" ")
+            param_cnt = 0  # Iterate through input parameters when command is called
+            no_params = False
+
         for ptr, val in enumerate(split_text):
             if split_text[ptr][:2] == '$[':
                 if self.get_detail_type(var_cnt).upper() == 'TEXT':
@@ -92,8 +96,13 @@ class cmd(object):
                     split_text[ptr] = str(self.get_detail_num(var_cnt))
                     var_cnt += 1
             elif split_text[ptr][:2] == '$(':
-                split_text[ptr] = input_params[param_cnt]
-                param_cnt += 1
+                if no_params is True:
+                    split_text[ptr] = ''
+                    print('DELETING THE VAR FROM OUTPUT')
+                else:
+                    split_text[ptr] = input_params[param_cnt]
+                    param_cnt += 1
+                    print('IN DA COMMAND REPLACEY THING')
 
         output_string = " ".join(split_text)
 
