@@ -76,7 +76,7 @@ class twitchStream(object):
                 print(line)
                 loading_flg = self._loading_complete(line)
                 
-        # self.send_message("Hi @Tazman_85 .")
+        self.send_message("I think you need a better bot .")
             
     def _loading_complete(self,line):
         """ Returns whether or not the socket has received the last bit of text
@@ -159,7 +159,11 @@ class twitchStream(object):
 
         # !mb will be a reserved command for mods to handle meekbot work
         if split_msg[0] == '!mb':
-            self._mb_command(user, split_msg)
+            mod_req_reltn = self.stream_reltn_matrix['MOD']
+            user_req_reltn = self.stream_reltn_matrix[self.viewerlist[user].view_lvl.upper()]
+
+            if user_req_reltn >= mod_req_reltn:
+                self._mb_command(user, split_msg)
 
         elif split_msg[0] in self.command_list:
 
@@ -369,7 +373,22 @@ class twitchStream(object):
             cmd_txt = " ".join(cmd_msg[cmd_params['ptr']:])
             print('cmd_text = ' + cmd_txt)
             self._mb_set_command(user, cmd_params['cmd_priv'], cmd_params['cooldown'], cmd_name, cmd_txt, 'Edit')
-            print('Edit command, ' + cmd_name + ', new text = ' + cmd_txt)
+
+        elif ((cmd_msg[1] == 'inc') or (cmd_msg[1] == 'dec')):
+            updt_cmd = cmd_msg[2]  # Name of the command being updated
+
+            if len(cmd_msg) > 3:
+                updt_cnts = " ".join(cmd_msg[3:])
+            else:
+                updt_cnts = '-all'
+
+            self._mb_adjust_cnt_val(updt_cmd, cmd_msg[1], updt_cnts)
+
+    def _mb_adjust_cnt_val(self, cmd, adjust_type, updt_cnts):
+        print(cmd)
+        print(adjust_type)
+        print(updt_cnts)
+
 
     def _mb_set_var(self, cmd_name, cmd_txt):
         # Parses the command text looking for variables.  For example $[var] and $[count]
