@@ -1,5 +1,6 @@
 #Log Files
 *.log
+*.pyc
 settings.py
 src\settings.py
 
